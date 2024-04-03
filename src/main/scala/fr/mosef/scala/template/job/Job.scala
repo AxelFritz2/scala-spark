@@ -11,5 +11,7 @@ trait Job {
   val src_path: String
   val dst_path: String
   val inputDF: DataFrame
-  val processedDF: DataFrame
+  val groupbyDF: DataFrame
+  val sumDF: DataFrame
+  val meanDF: DataFrame
 }

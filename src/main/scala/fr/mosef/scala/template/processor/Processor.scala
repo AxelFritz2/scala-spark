@@ -4,6 +4,8 @@ import org.apache.spark.sql.DataFrame
 
 trait Processor {
 
-  def process(inputDF: DataFrame) : DataFrame
+  def groupby(inputDF: DataFrame) : DataFrame
+  def sum(inputDF: DataFrame) : DataFrame
+  def mean(inputDF: DataFrame) : DataFrame
 
 }
