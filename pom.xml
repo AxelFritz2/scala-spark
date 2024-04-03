@@ -105,7 +105,7 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/eliamosef/scala_template</url>
+            <url>https://maven.pkg.github.com/AxelFritz2/scala-spark</url>
         </repository>
     </distributionManagement>
 </project>
