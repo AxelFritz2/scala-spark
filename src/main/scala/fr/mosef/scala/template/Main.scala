@@ -1,12 +1,10 @@
 package fr.mosef.scala.template
 
-import fr.mosef.scala.template.PropertiesReader.ConfigLoader
 import fr.mosef.scala.template.job.Job
 import fr.mosef.scala.template.processor.Processor
 import fr.mosef.scala.template.processor.impl.ProcessorImpl
 import fr.mosef.scala.template.reader.Reader
-import fr.mosef.scala.template.reader.impl.ReaderCSV
-import fr.mosef.scala.template.reader.impl.ReaderParquet
+import fr.mosef.scala.template.reader.impl.{ReaderCSV, ReaderHive, ReaderParquet}
 import fr.mosef.scala.template.writer.Writer
 import org.apache.spark.sql.SparkSession
 import fr.mosef.scala.template.writer.impl.{WriterCSV, WriterParquet}
@@ -53,6 +51,13 @@ object Main extends App with Job {
     }
   }
 
+  val Hive: Boolean = try {
+    cliArgs(5).toBoolean
+  } catch {
+    case e: Exception =>
+      false
+  }
+
   println(s"Master URL: $MASTER_URL")
   println(s"Source path: $SRC_PATH")
   println(s"Dest path: $DST_PATH")
@@ -67,12 +72,15 @@ object Main extends App with Job {
     .enableHiveSupport()
     .getOrCreate()
 
-  val reader: Reader = SRC_PATH.split("\\.").lastOption match {
-    case Some("csv") => new ReaderCSV(sparkSession, "./src/main/resources/application.properties")
-    case Some("parquet") => new ReaderParquet(sparkSession, "./src/main/resources/application.properties")
-    case _ =>
-      println("Fichier non lisible.")
-      sys.exit(1)
+  val reader: Reader = if (Hive) {
+    new ReaderHive(sparkSession, "./src/main/resources/application.properties")
+  } else {
+    SRC_PATH.split("\\.").lastOption match {
+      case Some("csv") => new ReaderCSV(sparkSession, "./src/main/resources/application.properties")
+      case Some("parquet") => new ReaderParquet(sparkSession, "./src/main/resources/application.properties")
+      case _ => println("Fichier non lisible.")
+                sys.exit(1)
+    }
   }
 
   val processor: Processor = new ProcessorImpl(group_var, op_var)
@@ -80,8 +88,7 @@ object Main extends App with Job {
   val writer: Writer = SRC_PATH.split("\\.").lastOption match {
     case Some("csv") => new WriterCSV("./src/main/resources/application.properties")
     case Some("parquet") => new WriterParquet()
-    case _ =>
-      sys.exit(1)
+    case _ => sys.exit(1)
   }
 
   val src_path = SRC_PATH

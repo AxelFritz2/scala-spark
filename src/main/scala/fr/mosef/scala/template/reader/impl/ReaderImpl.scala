@@ -9,14 +9,6 @@ class ReaderCSV(sparkSession: SparkSession, propertiesFilePath: String) extends 
   val properties: Properties = new Properties()
   properties.load(new FileInputStream(propertiesFilePath))
 
-  def read(format: String, options: Map[String, String], path: String): DataFrame = {
-    sparkSession
-      .read
-      .options(options)
-      .format(format)
-      .load(path)
-  }
-
   def read(path: String): DataFrame = {
     sparkSession
       .read
@@ -27,23 +19,12 @@ class ReaderCSV(sparkSession: SparkSession, propertiesFilePath: String) extends 
       .load(path)
   }
 
-  def read(): DataFrame = {
-    sparkSession.sql("SELECT 'Empty DataFrame for unit testing implementation")
-  }
 }
 
 
 class ReaderParquet(sparkSession: SparkSession, propertiesFilePath: String) extends Reader {
   val properties: Properties = new Properties()
   properties.load(new FileInputStream(propertiesFilePath))
-
-  def read(format: String, options: Map[String, String], path: String): DataFrame = {
-    sparkSession
-      .read
-      .options(options)
-      .format(format)
-      .load(path)
-  }
 
   def read(path: String): DataFrame = {
     sparkSession
@@ -52,7 +33,22 @@ class ReaderParquet(sparkSession: SparkSession, propertiesFilePath: String) exte
       .load(path)
   }
 
-  def read(): DataFrame = {
-    sparkSession.sql("SELECT 'Empty DataFrame for unit testing implementation")
+}
+
+class ReaderHive(sparkSession: SparkSession, propertiesFilePath: String) extends Reader {
+  val properties: Properties = new Properties()
+  properties.load(new FileInputStream(propertiesFilePath))
+  private def createExternalTable(tableName: String, path: String, fileFormat: String): Unit = {
+    sparkSession.sql(s"""
+                        |CREATE EXTERNAL TABLE IF NOT EXISTS $tableName
+                        |STORED AS $fileFormat
+                        |LOCATION '$path'
+                      """.stripMargin)
+  }
+  def read(path: String): DataFrame = {
+    createExternalTable(properties.getProperty("table_name"), path, properties.getProperty("reader_format_hive"))
+    sparkSession.table(properties.getProperty("table_name"))
   }
 }
+
+
