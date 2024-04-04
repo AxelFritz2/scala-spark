@@ -59,7 +59,6 @@ object Main extends App with Job {
   println(s"Valeur de group_var: $group_var")
   println(s"Valeur de group_var: $op_var")
 
-
   // Application
 
   val sparkSession = SparkSession
@@ -69,8 +68,8 @@ object Main extends App with Job {
     .getOrCreate()
 
   val reader: Reader = SRC_PATH.split("\\.").lastOption match {
-    case Some("csv") => new ReaderCSV(sparkSession)
-    case Some("parquet") => new ReaderParquet(sparkSession)
+    case Some("csv") => new ReaderCSV(sparkSession, "./src/main/resources/application.properties")
+    case Some("parquet") => new ReaderParquet(sparkSession, "./src/main/resources/application.properties")
     case _ =>
       println("Fichier non lisible.")
       sys.exit(1)
@@ -79,7 +78,7 @@ object Main extends App with Job {
   val processor: Processor = new ProcessorImpl(group_var, op_var)
 
   val writer: Writer = SRC_PATH.split("\\.").lastOption match {
-    case Some("csv") => new WriterCSV()
+    case Some("csv") => new WriterCSV("./src/main/resources/application.properties")
     case Some("parquet") => new WriterParquet()
     case _ =>
       sys.exit(1)

@@ -1,16 +1,13 @@
 package fr.mosef.scala.template.reader.impl
 
-import fr.mosef.scala.template.PropertiesReader.ConfigLoader
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import fr.mosef.scala.template.reader.Reader
+import java.util.Properties
+import java.io.FileInputStream
 
-class ReaderCSV(sparkSession: SparkSession) extends Reader {
-
-  //confloader.loadProperties()
-  //val format: String = ConfigLoader.getProperty("format").getOrElse("csv")
-  //val separator: String = ConfigLoader.getProperty("separator").getOrElse(";")
-  //val header: String = ConfigLoader.getProperty("header").getOrElse("true")
-
+class ReaderCSV(sparkSession: SparkSession, propertiesFilePath: String) extends Reader {
+  val properties: Properties = new Properties()
+  properties.load(new FileInputStream(propertiesFilePath))
 
   def read(format: String, options: Map[String, String], path: String): DataFrame = {
     sparkSession
@@ -23,10 +20,10 @@ class ReaderCSV(sparkSession: SparkSession) extends Reader {
   def read(path: String): DataFrame = {
     sparkSession
       .read
-      .option("sep", ",")
-      .option("inferSchema", "true")
-      .option("header", "true")
-      .format("csv")
+      .option("sep", properties.getProperty("read_separator"))
+      .option("inferSchema", properties.getProperty("schema"))
+      .option("header", properties.getProperty("read_header"))
+      .format(properties.getProperty("read_format_csv"))
       .load(path)
   }
 
@@ -35,7 +32,11 @@ class ReaderCSV(sparkSession: SparkSession) extends Reader {
   }
 }
 
-class ReaderParquet(sparkSession: SparkSession) extends Reader {
+
+class ReaderParquet(sparkSession: SparkSession, propertiesFilePath: String) extends Reader {
+  val properties: Properties = new Properties()
+  properties.load(new FileInputStream(propertiesFilePath))
+
   def read(format: String, options: Map[String, String], path: String): DataFrame = {
     sparkSession
       .read
@@ -47,7 +48,7 @@ class ReaderParquet(sparkSession: SparkSession) extends Reader {
   def read(path: String): DataFrame = {
     sparkSession
       .read
-      .format("parquet")
+      .format(properties.getProperty("read_format_parquet"))
       .load(path)
   }
 
