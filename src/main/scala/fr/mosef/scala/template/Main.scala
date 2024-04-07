@@ -7,17 +7,18 @@ import fr.mosef.scala.template.reader.Reader
 import fr.mosef.scala.template.reader.impl.{ReaderCSV, ReaderHive, ReaderParquet}
 import fr.mosef.scala.template.writer.Writer
 import org.apache.spark.sql.SparkSession
-import fr.mosef.scala.template.writer.impl.{WriterCSV, WriterParquet}
+import fr.mosef.scala.template.writer.impl.{WriterCSV, WriterParquet, WriterHive}
 
 object Main extends App with Job {
 
   val cliArgs = args
-  // Arguments d'entrée
+
   val MASTER_URL: String = try {
     cliArgs(0)
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => "local[1]"
   }
+  println(MASTER_URL)
 
   val SRC_PATH: String = try {
     cliArgs(1)
@@ -58,11 +59,24 @@ object Main extends App with Job {
       false
   }
 
+  val app_prop: String = try {
+    cliArgs(6)
+  } catch {
+    case e: java.lang.ArrayIndexOutOfBoundsException => {
+      "./src/main/resources/application.properties"
+    }
+  }
+
+  println("************************************************************************************************")
+  println("Args")
+  println("************************************************************************************************")
   println(s"Master URL: $MASTER_URL")
   println(s"Source path: $SRC_PATH")
   println(s"Dest path: $DST_PATH")
   println(s"Valeur de group_var: $group_var")
   println(s"Valeur de group_var: $op_var")
+  println(s"App path: $app_prop")
+
 
   // Application
 
@@ -72,38 +86,68 @@ object Main extends App with Job {
     .enableHiveSupport()
     .getOrCreate()
 
+  sparkSession.sparkContext.setLogLevel("ERROR")
+
+  val fileformat = SRC_PATH.split("\\.").lastOption
+
   val reader: Reader = if (Hive) {
-    new ReaderHive(sparkSession, "./src/main/resources/application.properties")
+    fileformat match {
+      case Some(format) => new ReaderHive(sparkSession, app_prop, format)
+    }
   } else {
-    SRC_PATH.split("\\.").lastOption match {
-      case Some("csv") => new ReaderCSV(sparkSession, "./src/main/resources/application.properties")
-      case Some("parquet") => new ReaderParquet(sparkSession, "./src/main/resources/application.properties")
-      case _ => println("Fichier non lisible.")
-                sys.exit(1)
+    fileformat match {
+      case Some("csv") => new ReaderCSV(sparkSession, app_prop)
+      case Some("parquet") => new ReaderParquet(sparkSession, app_prop)
+      case _ =>
+        println("Format de fichier non pris en charge.")
+        sys.exit(1)
     }
   }
-
   val processor: Processor = new ProcessorImpl(group_var, op_var)
 
-  val writer: Writer = SRC_PATH.split("\\.").lastOption match {
-    case Some("csv") => new WriterCSV("./src/main/resources/application.properties")
-    case Some("parquet") => new WriterParquet()
-    case _ => sys.exit(1)
-  }
+  val inputDF = reader.read(SRC_PATH)
 
-  val src_path = SRC_PATH
-  val dst_path = DST_PATH
-
-  val inputDF = reader.read(src_path)
+  println("************************************************************************************************")
+  println("Données d'Entrée")
+  println("************************************************************************************************")
+  inputDF.show(5)
 
   val groupbyDF = processor.groupby(inputDF)
-  writer.write(groupbyDF, "overwrite", dst_path + "_groupby")
-
   val sumDF = processor.sum(inputDF)
-  writer.write(sumDF, "overwrite", dst_path + "_sum")
-
   val meanDF = processor.mean(inputDF)
-  writer.write(meanDF, "overwrite", dst_path + "_mean")
+
+  if (!Hive) {
+    val dst_path = DST_PATH
+
+    val writer: Writer = fileformat match {
+      case Some("csv") => new WriterCSV(app_prop)
+      case Some("parquet") => new WriterParquet()
+      case _ => sys.exit(1)
+    }
+
+    println("************************************************************************************************")
+    println("GroupBy")
+    println("************************************************************************************************")
+    groupbyDF.show(5)
+    println("************************************************************************************************")
+    println("Sum")
+    println("************************************************************************************************")
+    sumDF.show(5)
+    println("************************************************************************************************")
+    println("Mean")
+    println("************************************************************************************************")
+    meanDF.show(5)
+
+    writer.write(groupbyDF, "overwrite", dst_path + "_groupby")
+    writer.write(sumDF, "overwrite", dst_path + "_sum")
+    writer.write(meanDF, "overwrite", dst_path + "_mean")
+  }else{
+    val writer = new WriterHive(sparkSession)
+
+    writer.write(groupbyDF, "table_groupby")
+    writer.write(sumDF, "table_sum")
+    writer.write(meanDF, "table_mean")
+  }
 
 }
 

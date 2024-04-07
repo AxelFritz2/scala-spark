@@ -7,9 +7,6 @@ import org.apache.spark.sql.DataFrame
 trait Job {
   val reader: Reader
   val processor: Processor
-  val writer: Writer
-  val src_path: String
-  val dst_path: String
   val inputDF: DataFrame
   val groupbyDF: DataFrame
   val sumDF: DataFrame
