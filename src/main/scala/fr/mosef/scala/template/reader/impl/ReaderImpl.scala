@@ -1,6 +1,6 @@
 package fr.mosef.scala.template.reader.impl
 
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.types._
 import fr.mosef.scala.template.reader.Reader
 
@@ -17,17 +17,26 @@ class ReaderCSV(sparkSession: SparkSession, propertiesFilePath: String) extends 
   println(properties)
   println("************************************************************************************************")
 
-
   def read(path: String): DataFrame = {
-    sparkSession
+    val df = sparkSession
       .read
       .option("sep", properties.getProperty("read_separator"))
       .option("inferSchema", properties.getProperty("schema"))
       .option("header", properties.getProperty("read_header"))
       .format(properties.getProperty("read_format_csv"))
       .load(path)
-  }
 
+    val header = properties.getProperty("read_header").toBoolean
+
+    if (!header) {
+      val firstRow: Row = df.first()
+      val columnNames: Seq[String] = firstRow.toSeq.map(_.toString)
+      val data = df.filter(row => row != firstRow).toDF(columnNames: _*)
+      data
+    } else {
+      df
+    }
+  }
 }
 
 

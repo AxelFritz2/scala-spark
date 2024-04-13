@@ -141,7 +141,7 @@ object Main extends App with Job {
     writer.write(groupbyDF, "overwrite", dst_path + "_groupby")
     writer.write(sumDF, "overwrite", dst_path + "_sum")
     writer.write(meanDF, "overwrite", dst_path + "_mean")
-  }else{
+  } else {
     val writer = new WriterHive(sparkSession)
 
     writer.write(groupbyDF, "table_groupby")
