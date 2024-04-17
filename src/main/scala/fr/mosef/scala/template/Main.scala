@@ -18,7 +18,6 @@ object Main extends App with Job {
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => "local[1]"
   }
-  println(MASTER_URL)
 
   val SRC_PATH: String = try {
     cliArgs(1)
